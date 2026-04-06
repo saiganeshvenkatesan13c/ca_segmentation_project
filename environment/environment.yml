@@ -1,1 +1,15 @@
-
+name: ca_segmentation_project
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - numpy
+  - pandas
+  - scikit-image
+  - matplotlib
+  - seaborn
+  - tqdm
+  - pip
+  - pip:
+      - cellpose
+      - stardist
