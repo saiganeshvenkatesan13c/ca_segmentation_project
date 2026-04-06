@@ -3,3 +3,11 @@ Calcium imaging segmentation project undertaken from Feb 2026 - Apr 2026 at the 
 
 
 Bioinformatics Project 1 (7.5 ECTS) carried out as a part of M.Sc Bioinformatics at the University of Copenhagen.
+
+
+Repository structure:
+
+src/        Code supporting projection, evaluation, and retraining
+data/       Documentation of data used (data not included)
+environment/ Conda environment specification
+report/     Final project report
