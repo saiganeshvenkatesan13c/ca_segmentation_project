@@ -6,4 +6,4 @@ Data consists of:
 
 Small subsets of the calcium data can be found on the [LUMIN Github page](https://github.com/kirkebylab/LUMIN).
 
-For more information about the data, refer to the [LUMIN paper](https://www.nature.com/articles/s41598-026-40269-0).
+For more information, refer to the [LUMIN paper](https://www.nature.com/articles/s41598-026-40269-0).
