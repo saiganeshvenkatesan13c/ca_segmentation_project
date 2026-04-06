@@ -8,7 +8,15 @@ Bioinformatics Project 1 (7.5 ECTS) carried out as a part of M.Sc Bioinformatics
 ## Repository structure
 
 ca_segmentation_project/
+
+
 ├── src/         Code supporting projection, evaluation, and retraining
+
+
 ├── data/        Documentation of data used (data not included)
+
+
 ├── environment/ Conda environment specification
+
+
 └── report/      Final project report
