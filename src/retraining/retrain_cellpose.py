@@ -68,7 +68,6 @@ for train_size in train_sizes:
         learning_rate=1e-5,
         weight_decay=0.1,
         n_epochs=100,
-        augment=False,
         model_name=model_name
     )
 
