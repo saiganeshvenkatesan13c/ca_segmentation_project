@@ -73,36 +73,3 @@ for train_size in train_sizes:
 
     with open(f"{MODEL_OUT_DIR}/{model_name}_losses.pkl", "wb") as f:
         pickle.dump((train_losses, test_losses), f)
-
-# Augmentation experiment (train = 9)
-train_imgs = remaining[:9]
-train_images, train_masks = load_data(train_imgs)
-
-for aug_flag in [False, True]:
-
-    tag = "aug" if aug_flag else "noaug"
-    model_name = f"cytotorch_1_retrain_9_{tag}"
-    print(f"\nTraining model: {model_name}")
-
-    model = models.CellposeModel(
-        gpu=use_gpu,
-        pretrained_model=PRETRAINED_MODEL
-    )
-
-    model_path, train_losses, test_losses = train.train_seg(
-        model.net,
-        train_data=train_images,
-        train_labels=train_masks,
-        test_data=test_images,
-        test_labels=test_masks,
-        channels=[0, 0],
-        channel_axis=-1,
-        learning_rate=1e-5,
-        weight_decay=0.1,
-        n_epochs=100,
-        augment=aug_flag,
-        model_name=model_name
-    )
-
-    with open(f"{MODEL_OUT_DIR}/{model_name}_losses.pkl", "wb") as f:
-        pickle.dump((train_losses, test_losses), f)
