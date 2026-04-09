@@ -30,7 +30,6 @@ for row in tqdm(df.itertuples(index=False), total=len(df)):
         gt_mask,
         pred_mask,
         thresh=0.5,
-        report_matches=False
     )
 
     # Metrics update
