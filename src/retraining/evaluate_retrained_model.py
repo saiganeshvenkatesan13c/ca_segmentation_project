@@ -1,9 +1,10 @@
 """
 Evaluate pretrained vs retrained model performance.
-Supports Results 3.4.
 """
 
-# Figure 3: Performance comparison after retraining
+-----------------------------------------------------------------------------------------
+
+# Performance comparison after retraining
 
 import os
 import numpy as np
@@ -19,7 +20,7 @@ VAL_MASK_DIR = "/home/qbx911/datadir/retrain/validation/Masks"
 
 MODELS = {
     "pretrained": "/home/qbx911/datadir/cellpose_models/cytotorch_1",
-    "retrained": "/home/qbx911/datadir/cellpose_models/cytotorch_1_retrain_9"
+    "retrained": "/maps/projects/dan1/people/qbx911/retrain/models/cytotorch_1_retrain_9"
 }
 
 use_gpu = torch.cuda.is_available()
@@ -37,15 +38,19 @@ for model_label, model_path in MODELS.items():
     for fname in tqdm(image_files, desc=f"Evaluating {model_label}"):
 
         img = imread(os.path.join(VAL_IMG_DIR, fname))
-        gt  = imread(
-            os.path.join(
-                VAL_MASK_DIR,
-                fname.replace("_image", "_mask")
-            )
+        gt  = imread(os.path.join(
+            VAL_MASK_DIR, fname.replace("_image", "_mask"))
         )
 
-        masks, _, _ = model.eval(img, diameter=None)
+        out = model.eval(img, diameter=None)
 
+        if len(out) == 4:
+            masks, _, _, _ = out
+        else:
+            masks, _, _ = out
+
+        
+        
         match = matching(
             gt.astype(np.int32),
             masks.astype(np.int32),
@@ -64,11 +69,51 @@ for model_label, model_path in MODELS.items():
 
 df = pd.DataFrame(results)
 df.to_csv("results_fig3_pretrained_vs_retrained.csv", index=False)
-print(df.groupby("model")[["f1", "precision", "recall"]].mean())
 
+print(df.groupby("model")[["f1", "precision", "recall", "mean_true_score"]].mean())
 
+----------------------------------------------------------------------------------------
 
-# Figure 4: Representative image demonstration (qualitative)
+# Plotting linked slope graph
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df = pd.read_csv("results_fig3_pretrained_vs_retrained.csv")
+
+metrics = ["f1", "precision", "recall", "mean_true_score"]
+titles = ["F1", "Precision", "Recall", "Mean true score"]
+
+fig, axes = plt.subplots(1, 4, figsize=(14, 5), sharey=False)
+
+for ax, metric, title in zip(axes, metrics, titles):
+
+    pivot = df.pivot(index="image", columns="model", values=metric)
+
+    for _, row in pivot.iterrows():
+        ax.plot(
+            ["pretrained", "retrained"],
+            [row["pretrained"], row["retrained"]],
+            marker="o",
+            color="black",
+            alpha=0.8
+        )
+
+    ax.set_title(title)
+    ax.set_ylim(0, 1)
+    ax.set_ylabel("Score")
+    ax.grid(True, axis="y", alpha=0.3)
+
+    import os
+    print(os.getcwd())
+    
+plt.suptitle("Pretrained vs Retrained Model Performance (Per Validation Image)")
+plt.tight_layout()
+plt.savefig("figure_3_slope_all_metrics.png", dpi=300)
+
+--------------------------------------------------------------------------------
+
+# Representative image demonstration (qualitative)
 
 import numpy as np
 from skimage.io import imsave
@@ -110,111 +155,73 @@ for label, model_path in MODELS.items():
 
         imsave(out_path, masks.astype("uint16"), check_contrast=False)
 
+-----------------------------------------------------------------------------------------
 
-# Figure 6: Training set size experiment
+# Effect of training size
 
-random.seed(911)
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
 
-DATA_DIR = "/home/qbx911/datadir/retrain/train_and_test"
-images = sorted([f for f in os.listdir(DATA_DIR) if f.endswith("_img.tiff")])
+# Load data
+df = pd.read_csv("results_fig6_training_size.csv")
 
-test_set = random.sample(images, 3)
-remaining = [img for img in images if img not in test_set]
+train_sizes = sorted(df["train_size"].unique())
+x = np.arange(len(train_sizes))
 
-train_sets = {
-    3: remaining[:3],
-    6: remaining[:6],
-    9: remaining[:9]
-}
+plt.figure(figsize=(6, 5))
 
-results = []
+# Mean bars
+means = df.groupby("train_size")["f1"].mean()
+plt.bar(x, means.values)
 
-for train_size in train_sets.keys():
-
-    model_path = f"/home/qbx911/datadir/cellpose_models/cytotorch_1_retrain_{train_size}"
-
-    model = models.CellposeModel(
-        pretrained_model=model_path,
-        gpu=use_gpu
+# Individual datapoints
+for i, size in enumerate(train_sizes):
+    vals = df[df["train_size"] == size]["f1"]
+    plt.scatter(
+        np.full(len(vals), x[i]),
+        vals,
+        color="black",
+        zorder=10
     )
 
-    for fname in sorted(os.listdir(VAL_IMG_DIR)):
-        img = imread(os.path.join(VAL_IMG_DIR, fname))
-        gt  = imread(
-            os.path.join(
-                VAL_MASK_DIR,
-                fname.replace("_image", "_mask")
-            )
-        )
+plt.xticks(x, train_sizes)
+plt.xlabel("Training set size (images)")
+plt.ylabel("F1 score")
+plt.title("Effect of Training Set Size on Segmentation Performance")
+plt.ylim(0, 1)
 
-        masks, _, _ = model.eval(img, diameter=None)
-        match = matching(gt, masks, thresh=0.5, report_matches=False)
+plt.tight_layout()
+plt.savefig("figure_6_training_size.png", dpi=300)
+plt.show()
 
-        results.append({
-            "train_size": train_size,
-            "image": fname,
-            "f1": match.f1
-        })
+-----------------------------------------------------------------------------------------
 
-df = pd.DataFrame(results)
-df.to_csv("results_fig6_training_size.csv", index=False)
+# Training & validation loss curves
 
-
-# Figure 7: Augmentation experiment
-
-MODELS = {
-    "no_aug": "/home/qbx911/datadir/cellpose_models/cytotorch_1_retrain_9_noaug",
-    "aug": "/home/qbx911/datadir/cellpose_models/cytotorch_1_retrain_9_aug"
-}
-
-results = []
-
-for label, model_path in MODELS.items():
-
-    model = models.CellposeModel(
-        pretrained_model=model_path,
-        gpu=use_gpu
-    )
-
-    for fname in tqdm(os.listdir(VAL_IMG_DIR), desc=label):
-        if not fname.endswith("_image.tiff"):
-            continue
-
-        img = imread(os.path.join(VAL_IMG_DIR, fname))
-        gt  = imread(
-            os.path.join(
-                VAL_MASK_DIR,
-                fname.replace("_image", "_mask")
-            )
-        )
-
-        masks, _, _ = model.eval(img, diameter=None)
-        match = matching(gt, masks, thresh=0.5, report_matches=False)
-
-        results.append({
-            "augmentation": label,
-            "f1": match.f1
-        })
-
-df = pd.DataFrame(results)
-df.to_csv("results_fig7_augmentation.csv", index=False)
-
-
-# Figure 8: Training and validation loss curves
-
+import numpy as np
 import matplotlib.pyplot as plt
 import pickle
+import os
 
-with open(
-    "/home/qbx911/datadir/cellpose_models/cytotorch_1_retrain_9_losses.pkl",
-    "rb"
-) as f:
+loss_file = "/home/qbx911/datadir/cellpose_models/cytotorch_1_retrain_9_losses.pkl"
+
+with open(loss_file, "rb") as f:
     train_losses, val_losses = pickle.load(f)
 
-plt.plot(train_losses, label="Training loss")
-plt.plot(val_losses, label="Validation loss")
+epochs = np.arange(len(train_losses))
+
+peak_idx = np.where(val_losses > 0)[0] # Find the indices where validation has non-zero peaks
+
+val_interp = np.interp(epochs, peak_idx, val_losses[peak_idx]) # Interpolate linearly between the peaks
+
+plt.plot(epochs, train_losses, label="Training loss")
+plt.plot(epochs, val_interp, label="Validation loss (connected peaks)")
 plt.xlabel("Epoch")
 plt.ylabel("Loss")
+plt.title("Training and validation loss (cytotorch_1 retraining)")
 plt.legend()
 plt.tight_layout()
 plt.savefig("figure_8_loss_curves.png")
+
+-----------------------------------------------------------------------------------------
