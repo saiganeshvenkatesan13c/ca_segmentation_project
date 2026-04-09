@@ -1,6 +1,5 @@
 """
 Retrain the selected Cellpose model using train_seg.
-Supports Methods 2.4.
 """
 # retrain_cellpose.py
 
@@ -28,6 +27,7 @@ all_images = sorted([f for f in os.listdir(DATA_DIR) if f.endswith("_img.tiff")]
 # Fixed-random test set
 test_imgs = random.sample(all_images, 3)
 remaining = [img for img in all_images if img not in test_imgs]
+
 
 def load_data(img_list):
     images = []
@@ -67,7 +67,7 @@ for train_size in train_sizes:
         channel_axis=-1,
         learning_rate=1e-5,
         weight_decay=0.1,
-        n_epochs=100,
+        n_epochs=200,
         model_name=model_name
     )
 
